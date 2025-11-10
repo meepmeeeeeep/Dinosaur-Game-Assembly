@@ -140,6 +140,9 @@ lane_y DWORD 200, 300, 400  ; Y positions for each lane
 lane_ceiling DWORD 80, 180, 280  ; Ceiling heights relative to each lane (120 units up from base)
 lane_ground DWORD 200, 300, 400  ; Ground heights for each lane
 
+lane_switch_cooldown DWORD 0    ; Counter for lane switch cooldown
+lane_cooldown_time DWORD 2     ; How many frames to wait before next switch
+
 .CODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;; PRINTING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -647,11 +650,27 @@ set_obj4:
 
 ;; Check for lane switching
 check_lane_switch:
+    ; Check if cooldown is active
+    cmp lane_switch_cooldown, 0
+    jg do_cooldown              ; If cooldown > 0, skip lane switching
+
     cmp KeyPress, 'W'           ; Check W key for moving up
-    je switch_lane_up
+    je do_switch_up
     cmp KeyPress, 'S'           ; Check S key for moving down
-    je switch_lane_down
+    je do_switch_down
     jmp key0                    ; No lane switch, continue with normal controls
+
+do_cooldown:
+    dec lane_switch_cooldown    ; Decrease cooldown counter
+    jmp key0                    ; Skip lane switching this frame
+
+do_switch_up:
+    mov lane_switch_cooldown, 2 ; Set cooldown
+    jmp switch_lane_up          ; Proceed with normal up switch
+
+do_switch_down:
+    mov lane_switch_cooldown, 2 ; Set cooldown
+    jmp switch_lane_down        ; Proceed with normal down switch
 
 switch_lane_up:
     cmp current_lane, 0         ; Already in top lane?
