@@ -4,10 +4,10 @@
 ;
 ; #########################################################################
 
-      .586
-      .MODEL FLAT,STDCALL
-      .STACK 4096
-      option casemap :none  ; case sensitive
+.586
+.MODEL FLAT,STDCALL
+.STACK 4096
+option casemap :none  ; case sensitive
 
 include stars.inc
 include lines.inc
@@ -18,7 +18,7 @@ include blit.inc
 .DATA
 
 	;; If you need to, you can place global variables here
-	
+
 .CODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DrawDinoPixel PROC USES ebx ecx x:DWORD, y:DWORD, color:DWORD

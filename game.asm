@@ -31,11 +31,12 @@ includelib \masm32\lib\masm32.lib
 .DATA
 ;; If you need to, you can place global variables here
 instruct0 BYTE "DINOSAUR GAME", 0
-instruct1 BYTE "Press SPACE / UP ARROW to jump.", 0
-instruct2 BYTE "Use DOWN ARROW to duck.", 0
-instruct3 BYTE "Use RIGHT to pause game.", 0
-instruct4 BYTE "Use LEFT to disable / enable pterodactyls.", 0
-instruct5 BYTE "Press SPACE to start the game.", 0
+instruct1 BYTE "Press SPACE / UP ARROW to Jump.", 0
+instruct2 BYTE "Press W / S ARROW to Switch Lanes.", 0
+instruct3 BYTE "Use DOWN ARROW to Duck.", 0
+instruct4 BYTE "Use RIGHT to Pause game.", 0
+instruct5 BYTE "Use LEFT to Disable / Enable Pterodactyls.", 0
+instruct6 BYTE "Press SPACE to start the game.", 0
 
 pausedStr BYTE "G A M E  P A U S E D", 0
 
@@ -423,6 +424,7 @@ makeScreen0 PROC
 	INVOKE DrawStr, OFFSET instruct3, 15, 55, 0
 	INVOKE DrawStr, OFFSET instruct4, 15, 65, 0
 	INVOKE DrawStr, OFFSET instruct5, 15, 75, 0
+	INVOKE DrawStr, OFFSET instruct6, 15, 85, 0
 	INVOKE BasicBlitDino, OFFSET dino0, obj1x, obj1y_run
 	INVOKE BasicBlit, OFFSET ground, 519, 327
 	INVOKE BasicBlit, OFFSET whitebox, screen2box, 327
@@ -1127,12 +1129,12 @@ GameInit ENDP
 GameRestart PROC USES eax ebx
 	mov screenNum, 2
 	;;INVOKE generateStartPos			;; randomly generate start position
-	;;mov obj2x, eax	
+	;;mov obj2x, eax
 	mov obj2x, 1970
 	;;INVOKE generateStartPos			;; randomly generate start position
 	mov obj3x, 890
-	;;mov obj3x, eax		
-	mov obj4x, 1300	
+	;;mov obj3x, eax
+	mov obj4x, 1300
 
 	;; Initialize top lane
     mov top_cactus_x, 890
@@ -1156,6 +1158,7 @@ GameRestart PROC USES eax ebx
 	mov highScore, ebx
 	clear_score:
 	mov score, 0						;; score back to 0
+
 	ret         ;; Do not delete this line!!!
 GameRestart ENDP
 
@@ -1214,13 +1217,23 @@ unpause:
 	dec isPaused
 
 not_paused:
-	cmp KeyPress, VK_LEFT
-	jne continue_screen_2
-	mov obj2x, 1170			; reset obj2x
-	cmp obj2_disabled, 1
-	jne obj2_was_enabled		; obj2_disabled = 0
-	dec obj2_disabled
-	jmp continue_screen_2
+    cmp KeyPress, VK_LEFT
+    jne continue_screen_2
+
+    ; Toggle pterodactyl state
+    cmp obj2_disabled, 1
+    jne disable_pterodactyls    ; If not disabled, disable them
+
+    ; Enable pterodactyls
+    mov obj2_disabled, 0
+    INVOKE generateBirdStartPos  ; Generate new starting position
+    mov obj2x, eax              ; Set new position
+    jmp continue_screen_2
+
+disable_pterodactyls:
+    mov obj2_disabled, 1        ; Disable pterodactyls
+    mov obj2x, 1870            ; Reset position off-screen
+    jmp continue_screen_2
 
 obj2_was_enabled:
 	inc obj2_disabled
@@ -1236,8 +1249,8 @@ continue_screen_2:
 	jmp the_end
 
 screen3:		;; end game string
-	INVOKE DrawStr, OFFSET endStr, 245, 205, 0	;;end game
-	INVOKE DrawStr, OFFSET restartStr, 190, 225, 0		;; restart string
+	INVOKE DrawStr, OFFSET endStr, 245, 165, 0	;;end game
+	INVOKE DrawStr, OFFSET restartStr, 190, 185, 0		;; restart string
 
 the_end:
 
