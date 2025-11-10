@@ -4,10 +4,10 @@
 ;
 ; #########################################################################
 
-      .586
-      .MODEL FLAT,STDCALL
-      .STACK 4096
-      option casemap :none  ; case sensitive
+.586
+.MODEL FLAT,STDCALL
+.STACK 4096
+option casemap :none  ; case sensitive
 
 include stars.inc
 include lines.inc
@@ -15,14 +15,14 @@ include lines.inc
 .DATA
 
 	;; If you need to, you can place global variables here
-	
+
 .CODE
-	
+
 
 ;; Don't forget to add the USES the directive here
 ;;   Place any registers that you modify (either explicitly or implicitly)
 ;;   into the USES list so that caller's values can be preserved
-	
+
 ;;   For example, if your procedure uses only the eax and ebx registers
 ;;      DrawLine PROC USES eax ebx x0:DWORD, y0:DWORD, x1:DWORD, y1:DWORD, color:DWORD
 DrawLine PROC USES eax edx ebx x0:DWORD, y0:DWORD, x1:DWORD, y1:DWORD, color:DWORD
@@ -33,7 +33,7 @@ DrawLine PROC USES eax edx ebx x0:DWORD, y0:DWORD, x1:DWORD, y1:DWORD, color:DWO
 	LOCAL delta_x:DWORD, delta_y:DWORD, inc_x:DWORD, inc_y:DWORD, curr_x:DWORD, curr_y:DWORD, error:DWORD, prev_error:DWORD, two:DWORD
 
 	;; eax, ebx, ecx, edx, esi, edi, ebp, esp
-	;; esp, ebp special 
+	;; esp, ebp special
 	;; we are using: eax, edx, ecx (for -delta_x), ebx as placeholder
 	;; mov <reg>,<reg>
 	;; mov <reg>,<mem>

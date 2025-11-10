@@ -4,10 +4,10 @@
 ;
 ; #########################################################################
 
-      .586
-      .MODEL FLAT,STDCALL
-      .STACK 4096
-      option casemap :none  ; case sensitive
+.586
+.MODEL FLAT,STDCALL
+.STACK 4096
+option casemap :none  ; case sensitive
 
 
 include stars.inc

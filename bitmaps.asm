@@ -1,15 +1,15 @@
 
-      .586
-      .MODEL FLAT,STDCALL
-      .STACK 4096
-      option casemap :none  ; case sensitive
+.586
+.MODEL FLAT,STDCALL
+.STACK 4096
+option casemap :none  ; case sensitive
 
 include stars.inc
 include lines.inc
 include trig.inc
 include blit.inc
 include game.inc
-	
+
 .DATA
 
 dino0 DINOGAMEBITMAP <63, 68, 255,, offset dino0 + sizeof dino0>

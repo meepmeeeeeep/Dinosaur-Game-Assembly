@@ -142,6 +142,12 @@ lane_ground DWORD 200, 300, 400  ; Ground heights for each lane
 lane_switch_cooldown DWORD 0    ; Counter for lane switch cooldown
 lane_cooldown_time DWORD 2     ; How many frames to wait before next switch
 
+jumps_remaining DWORD 2    ; Track available jumps (2 for double jump)
+
+double_jump_cooldown DWORD 0    ; Counter for double jump cooldown
+double_jump_input_cooldown DWORD 0    ; Cooldown for double jump input detection
+
+
 .CODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;; PRINTING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -714,16 +720,52 @@ set_bottom_lane:
 
 ;; DRAWING THE DINO
 key0:
-	mov ebx, obj1y_jump
-	cmp obj1y_run, ebx				;; check if running height is the same
-	jne jump 						;; if not the same we are in the middle of jumping	
-	cmp KeyPress, VK_SPACE					;; checking SPACE for jump
-	je play_jump_sound
-	cmp KeyPress, VK_UP						;; checking UP arrow
-	jne key1 								;; check the next button
-	play_jump_sound:
-	invoke PlaySound, offset jump_sound, 0, SND_FILENAME OR SND_ASYNC
-	jump:
+    mov ebx, obj1y_jump
+    cmp obj1y_run, ebx             ; check if on ground
+    jne check_double_jump          ; if not on ground, check for double jump
+    mov jumps_remaining, 2         ; reset jumps when on ground
+    cmp KeyPress, VK_SPACE        ; checking SPACE for jump
+    je do_jump
+    cmp KeyPress, VK_UP           ; checking UP arrow
+    jne key1                      ; check the next button
+
+do_jump:
+    cmp jumps_remaining, 0        ; check if can still jump
+    je key1                       ; if no jumps left, skip
+    dec jumps_remaining           ; use up one jump
+    invoke PlaySound, offset jump_sound, 0, SND_FILENAME OR SND_ASYNC
+    jmp jump
+
+check_double_jump:
+    ; Check if cooldown is active
+    cmp double_jump_cooldown, 0
+    jg continue_jump           ; If cooldown > 0, skip double jump check
+
+    ; Check input cooldown to prevent instant double jumps
+    cmp double_jump_input_cooldown, 0
+    jg continue_jump          ; If input cooldown active, skip double jump check
+
+    cmp KeyPress, VK_SPACE        ; check for double jump input
+    je try_double_jump
+    cmp KeyPress, VK_UP
+    jne jump                      ; if no input, continue jump
+
+try_double_jump:
+    cmp jumps_remaining, 0        ; check if second jump available
+    je jump                       ; if no jumps left, continue normal jump
+    dec jumps_remaining           ; use second jump
+    mov obj1_going_down, 0        ; reset falling state
+    mov double_jump_cooldown, 2   ; Set cooldown to 2 frames
+    mov double_jump_input_cooldown, 6  ; Set input cooldown to prevent instant double jump
+    invoke PlaySound, offset jump_sound, 0, SND_FILENAME OR SND_ASYNC
+    jmp jump
+
+continue_jump:
+    dec double_jump_cooldown      ; Decrease cooldown counter
+    dec double_jump_input_cooldown ; Decrease input cooldown counter
+    jmp jump
+
+jump:
 	mov obj1ptr, OFFSET dino0				;; using dino 0
 	cmp obj1y_jump, 180			;; max height is 175
 	jne direction_check							;; go from going up to going down
@@ -772,9 +814,11 @@ ground_hit:
     mul ebx
     mov ebx, OFFSET lane_ground
     add ebx, eax
-    mov eax, [ebx]      ; Get current lane's ground position
+    mov eax, [ebx]               ; Get current lane's ground position
     mov obj1y_jump, eax
+    mov obj1y, eax              ; Set current Y position
     mov obj1_going_down, 0
+    mov jumps_remaining, 2       ; Reset available jumps when hitting ground
     jmp set_jump_height
 
 go_up:
@@ -837,8 +881,10 @@ key1:	;; DOWN KEY
 	jmp move_cactus1
 
 noKey:				;; default move, no keys are being pressed
-	mov ebx, obj1y_run					;; setting jump height
-	mov obj1y, ebx
+    mov ebx, obj1y_run                   ;; setting jump height
+    mov obj1y, ebx
+    mov jumps_remaining, 2               ; Reset jumps when running
+
 
 	cmp obj1_run, 0
 	jne obj1_run_1
