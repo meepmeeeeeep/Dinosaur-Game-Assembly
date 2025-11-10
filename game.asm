@@ -112,7 +112,6 @@ isPaused DWORD 0
 isOver DWORD 0
 
 ;; sound effects
-; SndPath BYTE "Off Limits.wav",0 ; Disabled Music
 jump_sound BYTE "jump_sound.wav", 0
 dead_sound BYTE "dead_sound.wav", 0
 level_up_sound BYTE "level_up_sound.wav", 0
@@ -1063,8 +1062,7 @@ the_end_end:
 makeScreen2 ENDP
 
 GameInit PROC USES eax
-;; background music
-	; INVOKE PlaySound, offset SndPath, 0, SND_FILENAME OR SND_ASYNC OR SND_LOOP ; Disabled Music
+
 ;; for random number generation:
 	rdtsc
 	INVOKE nseed, eax
