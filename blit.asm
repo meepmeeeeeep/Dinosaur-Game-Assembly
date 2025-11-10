@@ -55,8 +55,8 @@ DrawDinoPixel ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;; a more advanced collison detector;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; returns if game is over
-BasicBlitDino PROC USES ebx ecx edx edi esi ptrBitmap:PTR EECS205BITMAP , xcenter:DWORD, ycenter:DWORD
-; ptrBitmap holds the address of a EECS205BITMAP
+BasicBlitDino PROC USES ebx ecx edx edi esi ptrBitmap:PTR DINOGAMEBITMAP , xcenter:DWORD, ycenter:DWORD
+; ptrBitmap holds the address of a DINOGAMEBITMAP
 ; draw it so that the center of the bitmap appears at (xcenter, ycenter)
 ; use nested loops with DrawPixel
 	LOCAL dw_width: DWORD, l_bound: DWORD, r_bound: DWORD, t_bound: DWORD, b_bound: DWORD 
@@ -66,7 +66,7 @@ BasicBlitDino PROC USES ebx ecx edx edi esi ptrBitmap:PTR EECS205BITMAP , xcente
 ;; edx is placeholder register
 ;; ebx holds ptrBitmap
 	mov ebx, ptrBitmap	; ebx = ptrBitmap
-	mov edx, (EECS205BITMAP PTR [ebx]).dwWidth ; edx = dwWidth
+	mov edx, (DINOGAMEBITMAP PTR [ebx]).dwWidth ; edx = dwWidth
 	mov dw_width, edx 	; dw_width = dwWidth
 ;; setting width bounds 
 	mov ecx, edx 	; ecx = dwWidth
@@ -77,7 +77,7 @@ BasicBlitDino PROC USES ebx ecx edx edi esi ptrBitmap:PTR EECS205BITMAP , xcente
 	mov r_bound, edx 	;r_bound = xcenter
 	add r_bound, ecx 	;r_bound = xcenter + dwWidth/2
 ;; setting height bounds 
-	mov ecx, (EECS205BITMAP PTR [ebx]).dwHeight
+	mov ecx, (DINOGAMEBITMAP PTR [ebx]).dwHeight
 	shr ecx, 1 			;ecx = dwHeight/2
 	mov edx, ycenter 	
 	mov t_bound, edx 	;t_bound = ycenter
@@ -102,9 +102,9 @@ inner_loop:
 	mul dw_width 	;eax = outer_loops * dw_width
 	add eax, inner_loops	; eax = outer_loops * dw_width + inner_loops
 
-	mov cl, (EECS205BITMAP PTR [ebx]).bTransparent 
+	mov cl, (DINOGAMEBITMAP PTR [ebx]).bTransparent 
 	mov t_color, cl 	; color = bTransparent
-	mov edi, (EECS205BITMAP PTR [ebx]).lpBytes
+	mov edi, (DINOGAMEBITMAP PTR [ebx]).lpBytes
 	mov cl, (BYTE PTR [edi + eax])	;color at the current position
 	cmp t_color, cl
 	je dont_draw
@@ -159,8 +159,8 @@ the_end:
 	ret 			; Don't delete this line!!!
 DrawPixel ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-BasicBlit PROC USES eax ebx ecx edx edi ptrBitmap:PTR EECS205BITMAP , xcenter:DWORD, ycenter:DWORD
-; ptrBitmap holds the address of a EECS205BITMAP
+BasicBlit PROC USES eax ebx ecx edx edi ptrBitmap:PTR DINOGAMEBITMAP , xcenter:DWORD, ycenter:DWORD
+; ptrBitmap holds the address of a DINOGAMEBITMAP
 ; draw it so that the center of the bitmap appears at (xcenter, ycenter)
 ; use nested loops with DrawPixel
 
@@ -169,7 +169,7 @@ BasicBlit PROC USES eax ebx ecx edx edi ptrBitmap:PTR EECS205BITMAP , xcenter:DW
 ;; edx is placeholder register
 ;; ebx holds ptrBitmap
 	mov ebx, ptrBitmap	; ebx = ptrBitmap
-	mov edx, (EECS205BITMAP PTR [ebx]).dwWidth ; edx = dwWidth
+	mov edx, (DINOGAMEBITMAP PTR [ebx]).dwWidth ; edx = dwWidth
 	mov dw_width, edx 	; dw_width = dwWidth
 ;; setting width bounds 
 	mov ecx, edx 	; ecx = dwWidth
@@ -180,7 +180,7 @@ BasicBlit PROC USES eax ebx ecx edx edi ptrBitmap:PTR EECS205BITMAP , xcenter:DW
 	mov r_bound, edx 	;r_bound = xcenter
 	add r_bound, ecx 	;r_bound = xcenter + dwWidth/2
 ;; setting height bounds 
-	mov ecx, (EECS205BITMAP PTR [ebx]).dwHeight
+	mov ecx, (DINOGAMEBITMAP PTR [ebx]).dwHeight
 	shr ecx, 1 			;ecx = dwHeight/2
 	mov edx, ycenter 	
 	mov t_bound, edx 	;t_bound = ycenter
@@ -205,9 +205,9 @@ inner_loop:
 	mul dw_width 	;eax = outer_loops * dw_width
 	add eax, inner_loops	; eax = outer_loops * dw_width + inner_loops
 
-	mov cl, (EECS205BITMAP PTR [ebx]).bTransparent 
+	mov cl, (DINOGAMEBITMAP PTR [ebx]).bTransparent 
 	mov t_color, cl 	; color = bTransparent
-	mov edi, (EECS205BITMAP PTR [ebx]).lpBytes
+	mov edi, (DINOGAMEBITMAP PTR [ebx]).lpBytes
 	mov cl, (BYTE PTR [edi + eax])	;color at the current position
 	cmp t_color, cl
 	je dont_draw
@@ -234,7 +234,7 @@ BasicBlit ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-RotateBlit PROC USES eax edx ebx esi lpBmp:PTR EECS205BITMAP, xcenter:DWORD, ycenter:DWORD, angle:FXPT
+RotateBlit PROC USES eax edx ebx esi lpBmp:PTR DINOGAMEBITMAP, xcenter:DWORD, ycenter:DWORD, angle:FXPT
 	LOCAL cosa:FXPT, sina: FXPT
 	LOCAL t_color: BYTE, lp_bytes: DWORD, width_: DWORD, height_: DWORD, shiftX: DWORD, shiftY: DWORD
 	LOCAL dstWidth: DWORD, dstHeight: DWORD, dstX: DWORD, dstY: DWORD
@@ -261,18 +261,18 @@ RotateBlit PROC USES eax edx ebx esi lpBmp:PTR EECS205BITMAP, xcenter:DWORD, yce
 continue:	
 ;; store color bitmap info
 	mov esi, lpBmp	; get pointer to bitmap
-	mov al, (EECS205BITMAP PTR[esi]).bTransparent
+	mov al, (DINOGAMEBITMAP PTR[esi]).bTransparent
 	mov t_color, al 		; set t_color
-	mov eax, (EECS205BITMAP PTR[esi]).lpBytes
+	mov eax, (DINOGAMEBITMAP PTR[esi]).lpBytes
 	mov lp_bytes, eax 		; set pointer to colors
-	mov eax, (EECS205BITMAP PTR[esi]).dwWidth
+	mov eax, (DINOGAMEBITMAP PTR[esi]).dwWidth
 	mov width_, eax 			; set width
-	mov eax, (EECS205BITMAP PTR[esi]).dwHeight
+	mov eax, (DINOGAMEBITMAP PTR[esi]).dwHeight
 	mov height_, eax 		; set height
-; shiftX = (EECS205BITMAP PTR [esi]).dwWidth * cosa / 2 ​  
-; 			-  (EECS205BITMAP PTR [esi]).dwHeight * sina / 2  
-; shiftY = (EECS205BITMAP PTR [esi]).dwHeight * cosa / 2 
-; 			+  (EECS205BITMAP PTR [esi]).dwWidth * sina / 2  
+; shiftX = (DINOGAMEBITMAP PTR [esi]).dwWidth * cosa / 2 ​  
+; 			-  (DINOGAMEBITMAP PTR [esi]).dwHeight * sina / 2  
+; shiftY = (DINOGAMEBITMAP PTR [esi]).dwHeight * cosa / 2 
+; 			+  (DINOGAMEBITMAP PTR [esi]).dwWidth * sina / 2  
 	mov eax, width_
 	sal eax, 16	; convert to FXPT
 	mov ebx, cosa
@@ -337,14 +337,14 @@ inner_loop:
 	cmp srcX, 0 ; srcX >= 0
 	jl inner_incr
 
-	mov ebx, width_ ; srcX < (EECS205BITMAP PTR [esi]).dwWidth
+	mov ebx, width_ ; srcX < (DINOGAMEBITMAP PTR [esi]).dwWidth
 	cmp srcX, ebx
 	jge inner_incr
 	
 	cmp srcY, 0	; srcY >= 0
 	jl inner_incr
 	
-	mov ebx, height_ ; srcY < (EECS205BITMAP PTR [esi]).dwHeight
+	mov ebx, height_ ; srcY < (DINOGAMEBITMAP PTR [esi]).dwHeight
 	cmp srcY, ebx
 	jge inner_incr
 

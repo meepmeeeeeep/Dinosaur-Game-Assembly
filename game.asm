@@ -236,7 +236,7 @@ PrintDWORD ENDP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;CHECK COLLISION ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; returns 0 if there is no intersect, 1 if there is a collison
-CheckIntersect PROC USES ebx ecx edx oneX:DWORD, oneY:DWORD, oneBitmap:PTR EECS205BITMAP, twoX:DWORD, twoY:DWORD, twoBitmap:PTR EECS205BITMAP 
+CheckIntersect PROC USES ebx ecx edx oneX:DWORD, oneY:DWORD, oneBitmap:PTR DINOGAMEBITMAP, twoX:DWORD, twoY:DWORD, twoBitmap:PTR DINOGAMEBITMAP 
 	LOCAL left1:DWORD, right1:DWORD, top1:DWORD, bottom1:DWORD, left2:DWORD, right2:DWORD, top2:DWORD, bottom2:DWORD
 	;; left 	DWORD ? ;; x - bitmap.width / 2
 	;; right	DWORD ? ;; x + bitmap.width / 2
@@ -245,40 +245,40 @@ CheckIntersect PROC USES ebx ecx edx oneX:DWORD, oneY:DWORD, oneBitmap:PTR EECS2
 	mov ebx, oneBitmap 	; store first bitmap ptr
 	mov edx, twoBitmap  ; store second bitmap ptr
 ;;SETTING LEFT RIGHT BOUNDS FOR BITMAP 1
-	mov eax, (EECS205BITMAP PTR [ebx]).dwWidth
+	mov eax, (DINOGAMEBITMAP PTR [ebx]).dwWidth
 	sar eax, 1 			;eax = width/2
 	mov ecx, oneX 		;ecx = oneX
 	sub ecx, eax 		;ecx = oneX - (width / 2)
 	mov left1, ecx 		;leftBound = oneX - (width / 2)
 	mov right1, ecx 	;rightBound = oneX - (width / 2)
-	mov eax, (EECS205BITMAP PTR [ebx]).dwWidth
+	mov eax, (DINOGAMEBITMAP PTR [ebx]).dwWidth
 	add right1, eax  	;rightBound = oneX + (width / 2)
 ;; SETTING LEFT RIGHT BOUNDS FOR BITMAP 2
-	mov eax, (EECS205BITMAP PTR [edx]).dwWidth
+	mov eax, (DINOGAMEBITMAP PTR [edx]).dwWidth
 	sar eax, 1 			;eax = width/2
 	mov ecx, twoX 		;ecx = oneX
 	sub ecx, eax 		;ecx = oneX - (width / 2)
 	mov left2, ecx 		;leftBound = oneX - (width / 2)
 	mov right2, ecx 	;rightBound = oneX - (width / 2)
-	mov eax, (EECS205BITMAP PTR [edx]).dwWidth
+	mov eax, (DINOGAMEBITMAP PTR [edx]).dwWidth
 	add right2, eax  	;rightBound = oneX + (width / 2)
 ;; SETTING TOP BOTTOM BOUNDS FOR BITMAP 1
-	mov eax, (EECS205BITMAP PTR [ebx]).dwHeight
+	mov eax, (DINOGAMEBITMAP PTR [ebx]).dwHeight
 	sar eax, 1 			;eax = height/2
 	mov ecx, oneY 		;eax = oneY
 	sub ecx, eax 		;ecx = oneY - (height / 2)
 	mov top1, ecx 		;upperBound = oneY - (height / 2)
 	mov bottom1, ecx 	;lowerBound = oneY - (height / 2)
-	mov eax, (EECS205BITMAP PTR [ebx]).dwHeight
+	mov eax, (DINOGAMEBITMAP PTR [ebx]).dwHeight
 	add bottom1, eax  	;lowerBound = oneY + (height / 2)
 ;; SETTING TOP BOTTOM BOUNDS FOR BITMAP 2
-	mov eax, (EECS205BITMAP PTR [edx]).dwHeight
+	mov eax, (DINOGAMEBITMAP PTR [edx]).dwHeight
 	sar eax, 1 			;eax = height/2
 	mov ecx, twoY 		;eax = twoY
 	sub ecx, eax 		;ecx = twoY - (height / 2)
 	mov top2, ecx 		;upperBound = twoY - (height / 2)
 	mov bottom2, ecx 	;lowerBound = twoY - (height / 2)
-	mov eax, (EECS205BITMAP PTR [edx]).dwHeight
+	mov eax, (DINOGAMEBITMAP PTR [edx]).dwHeight
 	add bottom2, eax  	;lowerBound = oneY + (height / 2)
 
 ;; Check if:
@@ -547,10 +547,10 @@ the_end:
 drawClouds ENDP
 
 makeScreen2 PROC USES eax ebx
-	LOCAL obj1ptr: PTR EECS205BITMAP, obj1y: DWORD
-	LOCAL obj2ptr: PTR EECS205BITMAP, obj2y: DWORD
-	LOCAL obj3ptr: PTR EECS205BITMAP, obj3y: DWORD
-	LOCAL obj4ptr: PTR EECS205BITMAP, obj4y: DWORD
+	LOCAL obj1ptr: PTR DINOGAMEBITMAP, obj1y: DWORD
+	LOCAL obj2ptr: PTR DINOGAMEBITMAP, obj2y: DWORD
+	LOCAL obj3ptr: PTR DINOGAMEBITMAP, obj3y: DWORD
+	LOCAL obj4ptr: PTR DINOGAMEBITMAP, obj4y: DWORD
 
 ;; DRAWING THE BIRD
 
