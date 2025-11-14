@@ -33,7 +33,7 @@ includelib \masm32\lib\masm32.lib
 instruct0 BYTE "DINOSAUR GAME", 0
 instruct1 BYTE "Press SPACE / UP ARROW to Jump.", 0
 instruct2 BYTE "Press W / S ARROW to Switch Lanes.", 0
-instruct3 BYTE "Use DOWN ARROW to Duck.", 0
+instruct3 BYTE "Use DOWN ARROW / CTRL to Duck.", 0
 instruct4 BYTE "Use RIGHT to Pause game.", 0
 instruct5 BYTE "Use LEFT to Disable / Enable Pterodactyls.", 0
 instruct6 BYTE "Press SPACE to start the game.", 0
@@ -151,6 +151,20 @@ double_jump_input_cooldown DWORD 0    ; Cooldown for double jump input detection
 pterodactyl_cooldown DWORD 0    ; Counter for pterodactyl cooldown
 pterodactyl_input_cooldown DWORD 0    ; Cooldown for pterodactyl input detection
 
+game_over_cooldown DWORD 0    ; Cooldown for game over cooldown
+
+is_night_mode DWORD 0    ; 0 = day (white bg), 1 = night (dark bg)
+PUBLIC is_night_mode
+
+text_color DWORD 0           ; Current text color
+PUBLIC text_color
+easter_egg_active DWORD 0    ; 1 if score between 10000-11000
+PUBLIC easter_egg_active
+
+base_obj2_speed DWORD 28      ; Base bird speed
+base_cactus_speed DWORD 21    ; Base cactus speed
+speed_increment DWORD 2       ; How much to increase speed every 200 points
+max_speed_multiplier DWORD 20 ; Maximum speed increase (caps at 200*20 = 4000 points)
 
 .CODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,12 +202,14 @@ no_zeros:
 	push offset fmtStr0_high
 
 print_score:
-	push offset outStr
-	call wsprintf
-	add esp, 12
-	invoke DrawStr, offset outStr, 510, 5, 0
-	ret
+    push offset outStr
+    call wsprintf
+    add esp, 12
+    invoke DrawStr, offset outStr, 510, 5, text_color  ; Use dynamic color
+    ret
+
 PrintHighScore ENDP
+
 PrintScore PROC USES eax
 	mov eax, score
 	push eax
@@ -226,22 +242,33 @@ no_zeros:
 	push offset fmtStr0
 
 print_score:
-	push offset outStr
-	call wsprintf
-	add esp, 12
-	invoke DrawStr, offset outStr, 582, 5, 0
-	ret
+    push offset outStr
+    call wsprintf
+    add esp, 12
+    invoke DrawStr, offset outStr, 582, 5, text_color  ; Use dynamic color
+    ret
+
 PrintScore ENDP
+
 ; This prints digits
 PrintDWORD PROC USES eax d_word: DWORD, x_coord: DWORD, y_coord: DWORD, color: DWORD
-	mov eax, d_word
-	push eax
-	push offset blankStr
-	push offset outStr
-	call wsprintf
-	add esp, 12
-	invoke DrawStr, offset outStr, x_coord, y_coord, color
-	ret
+    mov eax, d_word
+    push eax
+    push offset blankStr
+    push offset outStr
+    call wsprintf
+    add esp, 12
+
+    ; Use text_color if color parameter is 0, otherwise use provided color
+    mov eax, color
+    cmp eax, 0
+    jne use_provided_color
+    mov eax, text_color
+
+use_provided_color:
+    invoke DrawStr, offset outStr, x_coord, y_coord, eax
+    ret
+
 PrintDWORD ENDP
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -349,17 +376,20 @@ makeWhiteScreen PROC USES ebx edx
     mov ebx, 0       ;; zero out ebx
     mov edx, 0       ;; zero out ecx
 
-    ;; Check if score is multiple of 500 to determine background color
+    ;; Check if score is multiple of 1000 to determine background color
     mov eax, score
-    mov ecx, 1000     ; Check every 500 points
+    mov ecx, 1000     ; Check every 1000 points
     mov edx, 0      ; clear edx for division
-    div ecx         ; divide score by 500
+    div ecx         ; divide score by 1000
     and eax, 1      ; check if quotient is odd or even
     jnz use_gray
     mov eax, 255    ; Use white if even
+    mov is_night_mode, 0  ; Day mode
     jmp draw_background
+
 use_gray:
     mov eax, 110   ; Use gray (110) if odd
+    mov is_night_mode, 1  ; Night mode
 
 draw_background:
     mov ecx, eax    ; Store color in ecx for drawing loop
@@ -580,31 +610,34 @@ obj2_1:
 	dec obj2
 
 get_obj2_height:							;; use randomly generated height
-	cmp obj2_mode, 0
-	jne obj2_med_mode
+    cmp obj2_mode, 0
+    jne obj2_med_mode
 
-	mov ebx, obj2y_high
-	jmp set_obj2_height
-	obj2_med_mode:
-	cmp obj2_mode, 1
-	jne obj2_low_mode
+    mov ebx, obj2y_high
+    jmp set_obj2_height
+    obj2_med_mode:
+    cmp obj2_mode, 1
+    jne obj2_low_mode
 
-	mov ebx, obj2y_mid
-	jmp set_obj2_height
-	obj2_low_mode:
-	mov ebx, obj2y_low
+    mov ebx, obj2y_mid
+    jmp set_obj2_height
+    obj2_low_mode:
+    mov ebx, obj2y_low
 
 set_obj2_height:
-	mov obj2y, ebx
+    mov obj2y, ebx
 
 move_bird:
-	cmp obj2x, -30
-	jle bird_moved_offscreen				;; bird has moved offscreen so we don't want to draw anymore
+    cmp obj2_disabled, 1        ; Add this check
+    je obj3_0                   ; Skip bird movement if disabled
+
+    cmp obj2x, -30
+    jle bird_moved_offscreen	; Stop drawing if bird is offscreen
 
 	mov ebx, obj2_speed
-	sub obj2x, ebx					;; move bird across the screen
+	sub obj2x, ebx				;; move bird across the screen
 	cmp obj2x, 670
-	jge obj3_0			;; don't draw if still moving onto screen
+	jge obj3_0					;; don't draw if still moving onto screen
 
 draw_bird:
 	INVOKE BasicBlit, obj2ptr, obj2x, obj2y	;; drawing the object
@@ -783,10 +816,13 @@ direction_check:
     jmp go_down          ; Make sure we go down if flag is set
 
 go_down:
-    ; Check if down key is pressed for fast fall
+    ; Check if down key OR ctrl key is pressed for fast fall
     cmp KeyPress, VK_DOWN
+    je fast_fall
+    cmp KeyPress, VK_CONTROL
     jne normal_fall
 
+fast_fall:
     ; Get current lane's ground position
     mov eax, current_lane
     mov ebx, 4
@@ -796,7 +832,7 @@ go_down:
     mov eax, obj1y_jump
     add eax, 45          ; Fast fall speed
     cmp eax, [ebx]      ; Compare with current lane's ground
-    jge ground_hit      
+    jge ground_hit
     mov obj1y_jump, eax
     jmp set_jump_height
 
@@ -828,6 +864,8 @@ ground_hit:
 
 go_up:
     cmp KeyPress, VK_DOWN
+    je cancel_jump
+    cmp KeyPress, VK_CONTROL
     je cancel_jump
 
     ; Calculate max height relative to current lane
@@ -869,21 +907,25 @@ set_jump_height:
 	mov obj1y, ebx
 	jmp move_cactus1
 
-key1:	;; DOWN KEY
-	cmp KeyPress, VK_DOWN					;; checking DOWN ARROW for duck
-	jne noKey 								;; check the next button
-	mov ebx, obj1y_duck					;; setting jump height
-	mov obj1y, ebx
+key1:	;; DOWN KEY or CTRL KEY
+    cmp KeyPress, VK_DOWN					;; checking DOWN ARROW for duck
+    je do_duck 								;; if DOWN is pressed, duck
+    cmp KeyPress, VK_CONTROL				;; checking CTRL for duck
+    jne noKey 								;; if neither pressed, check next button
 
-	cmp obj1_duck, 0
-	jne obj1_duck_1
-	inc obj1_duck
-	mov obj1ptr, OFFSET dino3		;; using dino 3
-	jmp move_cactus1
-	obj1_duck_1:
-	mov obj1ptr, OFFSET dino4		;; using dino 4
-	dec obj1_duck
-	jmp move_cactus1
+do_duck:
+    mov ebx, obj1y_duck					;; setting duck height
+    mov obj1y, ebx
+
+    cmp obj1_duck, 0
+    jne obj1_duck_1
+    inc obj1_duck
+    mov obj1ptr, OFFSET dino3		;; using dino 3
+    jmp move_cactus1
+    obj1_duck_1:
+    mov obj1ptr, OFFSET dino4		;; using dino 4
+    dec obj1_duck
+    jmp move_cactus1
 
 noKey:				;; default move, no keys are being pressed
     mov ebx, obj1y_run                   ;; setting jump height
@@ -896,13 +938,13 @@ noKey:				;; default move, no keys are being pressed
 	mov obj1ptr, OFFSET dino0		;; using dino 0
 	inc obj1_run						;; use dino 1 next
 	jmp move_cactus1
-	obj1_run_1:	
+	obj1_run_1:
 	cmp obj1_run, 1
 	jne obj1_run_2
 	mov obj1ptr, OFFSET dino1		;; using dino 1
 	inc obj1_run						;; use dino 2 next
 	jmp move_cactus1
-	obj1_run_2:	
+	obj1_run_2:
 	mov obj1ptr, OFFSET dino2		;; using dino 2
 	mov obj1_run, 0						;; use dino 0 next
 
@@ -947,12 +989,15 @@ cactus2_moved_offscreen:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; NEW MECHANIC: DRAW TOP AND BOTTOM LANES
-;; DRAWING THE TOP AND BOTTOM LANE OBSTACLES
+
 ;; Draw top lane obstacles
 draw_top_lane:
+    cmp obj2_disabled, 1        ; Check if pterodactyls disabled
+    je draw_top_cactus_only    ; Skip bird logic entirely if disabled
+
     cmp top_obj_mode, 0
     je draw_top_cactus
-    
+
     ;; Draw bird in top lane
     INVOKE BasicBlit, obj2ptr, top_bird_x, top_lane_y
     mov ebx, obj2_speed
@@ -961,11 +1006,10 @@ draw_top_lane:
     jle reset_top_bird
     jmp draw_bottom_lane
 
-reset_top_bird:
-    INVOKE generateBirdStartPos
-    mov top_bird_x, eax
-    jmp draw_bottom_lane
-    
+draw_top_cactus_only:
+    ; When pterodactyls disabled, only draw cacti
+    mov top_obj_mode, 0        ; Force cactus mode
+
 draw_top_cactus:
     INVOKE BasicBlit, obj3ptr, top_cactus_x, top_lane_y
     mov ebx, cactus_speed
@@ -974,17 +1018,25 @@ draw_top_cactus:
     jle reset_top_cactus
     jmp draw_bottom_lane
 
+reset_top_bird:
+    INVOKE generateBirdStartPos
+    mov top_bird_x, eax
+    jmp draw_bottom_lane
+
 reset_top_cactus:
-    INVOKE randInt, 0, 2
+    INVOKE randInt, 0, 1       ; Only choose between cactus types (0-1) not bird
     mov top_obj_mode, eax
     INVOKE generateCactusStartPos2, bottom_cactus_x
     mov top_cactus_x, eax
 
 ;; Draw bottom lane obstacles
 draw_bottom_lane:
+    cmp obj2_disabled, 1       ; Check if pterodactyls disabled
+    je draw_bottom_cactus_only ; Skip bird logic entirely if disabled
+
     cmp bottom_obj_mode, 0
     je draw_bottom_cactus
-    
+
     ;; Draw bird in bottom lane
     INVOKE BasicBlit, obj2ptr, bottom_bird_x, bottom_lane_y
     mov ebx, obj2_speed
@@ -993,11 +1045,10 @@ draw_bottom_lane:
     jle reset_bottom_bird
     jmp draw_dino
 
-reset_bottom_bird:
-    INVOKE generateBirdStartPos
-    mov bottom_bird_x, eax
-    jmp draw_dino
-    
+draw_bottom_cactus_only:
+    ; When pterodactyls disabled, only draw cacti
+    mov bottom_obj_mode, 0     ; Force cactus mode
+
 draw_bottom_cactus:
     INVOKE BasicBlit, obj4ptr, bottom_cactus_x, bottom_lane_y
     mov ebx, cactus_speed
@@ -1006,8 +1057,13 @@ draw_bottom_cactus:
     jle reset_bottom_cactus
     jmp draw_dino
 
+reset_bottom_bird:
+    INVOKE generateBirdStartPos
+    mov bottom_bird_x, eax
+    jmp draw_dino
+
 reset_bottom_cactus:
-    INVOKE randInt, 0, 2
+    INVOKE randInt, 0, 1       ; Only choose between cactus types (0-1) not bird
     mov bottom_obj_mode, eax
     INVOKE generateCactusStartPos2, top_cactus_x
     mov bottom_cactus_x, eax
@@ -1054,6 +1110,7 @@ draw_dead_dino:
     INVOKE drawClouds
     INVOKE BasicBlitDino, OFFSET dino5, obj1x, obj1y
     invoke PlaySound, offset dead_sound, 0, SND_FILENAME OR SND_ASYNC
+    mov game_over_cooldown, 15  ; Set cooldown to 15 frames
 
 the_end:
 ;; DETERMINE IF pterodactyls have been enabled or not
@@ -1065,8 +1122,34 @@ the_end:
 	mov ebx, OFFSET birdStr0
 
 print_scoreboard:
-    INVOKE DrawStr, ebx, 5, 5, 0 ;; print if bird is disabled or not
+    INVOKE DrawStr, ebx, 5, 5, text_color ;; Use dynamic text color
 
+    ;; Check for easter egg activation (10000-11000)
+    mov eax, score
+    cmp eax, 10000
+    jl normal_color_mode
+    cmp eax, 11000
+    jg normal_color_mode
+
+    ; Easter egg active - change color every frame
+    mov easter_egg_active, 1
+    INVOKE randInt, 0, 255     ; Random color each frame
+    mov text_color, eax
+    jmp check_score_display
+
+normal_color_mode:
+    mov easter_egg_active, 0
+
+    ; Normal color mode - invert based on night mode
+    cmp is_night_mode, 1
+    jne day_text_color
+    mov text_color, 255        ; White text for night mode
+    jmp check_score_display
+
+day_text_color:
+    mov text_color, 0          ; Black text for day mode
+
+check_score_display:
     ;; Check if score is multiple of 1000
     mov eax, score
     mov ebx, 1000
@@ -1102,6 +1185,44 @@ check_level_up:            ; New section for level up sound
     je check_high_score     ; if score is 0, skip sound
     invoke PlaySound, offset level_up_sound, 0, SND_FILENAME OR SND_ASYNC
 
+calculate_speeds:
+    ; Calculate speed multiplier based on score (every 200 points)
+    mov eax, score
+    mov ebx, 200
+    mov edx, 0
+    div ebx                    ; eax = score / 200
+
+    ; Cap the multiplier at max_speed_multiplier
+    cmp eax, max_speed_multiplier
+    jle apply_multiplier
+    mov eax, max_speed_multiplier
+
+apply_multiplier:
+    ; Calculate new cactus speed
+    mov ebx, speed_increment
+    mul ebx                    ; eax = multiplier * increment
+    mov ebx, base_cactus_speed
+    add eax, ebx              ; eax = base_speed + (multiplier * increment)
+    mov cactus_speed, eax
+
+    ; Calculate new bird speed
+    mov eax, score
+    mov ebx, 200
+    mov edx, 0
+    div ebx                    ; eax = score / 200
+
+    ; Cap the multiplier
+    cmp eax, max_speed_multiplier
+    jle apply_bird_multiplier
+    mov eax, max_speed_multiplier
+
+apply_bird_multiplier:
+    mov ebx, speed_increment
+    mul ebx                    ; eax = multiplier * increment
+    mov ebx, base_obj2_speed
+    add eax, ebx              ; eax = base_speed + (multiplier * increment)
+    mov obj2_speed, eax
+
 check_high_score:
     cmp highScore, 0
     je the_end_end
@@ -1117,8 +1238,8 @@ GameInit PROC USES eax
 ;; for random number generation:
 	rdtsc
 	INVOKE nseed, eax
-	INVOKE makeWhiteScreen	
-	INVOKE makeScreen0			;; draw instructions screen 
+	INVOKE makeWhiteScreen
+	INVOKE makeScreen0			;; draw instructions screen
 	;; initiation of cloud heights
 	INVOKE generateCloudStartPosY
 	mov cloud1y, eax
@@ -1130,48 +1251,66 @@ GameInit PROC USES eax
 GameInit ENDP
 
 GameRestart PROC USES eax ebx
-	mov screenNum, 2
-	;;INVOKE generateStartPos			;; randomly generate start position
-	;;mov obj2x, eax
-	mov obj2x, 1970
-	;;INVOKE generateStartPos			;; randomly generate start position
-	mov obj3x, 890
-	;;mov obj3x, eax
-	mov obj4x, 1300
+    mov screenNum, 2
+    
+    ; Randomize middle lane obstacles
+    INVOKE randInt, 800, 1200
+    mov obj3x, eax
+    INVOKE randInt, 1500, 2000
+    mov obj4x, eax
+    INVOKE randInt, 2200, 3000
+    mov obj2x, eax
 
-	;; Initialize top lane
-    mov top_cactus_x, 890
-    mov top_bird_x, 1870
+    ; Randomize top lane obstacles
+    INVOKE randInt, 900, 1300
+    mov top_cactus_x, eax
+    INVOKE randInt, 2000, 2800
+    mov top_bird_x, eax
     mov top_obj_mode, 0
 
-    ;; Initialize bottom lane
-    mov bottom_cactus_x, 1300
-    mov bottom_bird_x, 2100
+    ; Randomize bottom lane obstacles
+    INVOKE randInt, 1200, 1800
+    mov bottom_cactus_x, eax
+    INVOKE randInt, 2400, 3200
+    mov bottom_bird_x, eax
     mov bottom_obj_mode, 0
 
-	;; reset cloud positions
-	mov cloud1x, 670
-	mov cloud2x, 883
-	mov cloud3x, 1096
+    ;; reset cloud positions with randomization
+    INVOKE randInt, 600, 800
+    mov cloud1x, eax
+    INVOKE randInt, 850, 950
+    mov cloud2x, eax
+    INVOKE randInt, 1050, 1150
+    mov cloud3x, eax
 
-	dec isOver	;; set isOver back to 0
-	mov ebx, score
-	cmp highScore, ebx					;; new high score???
-	jge clear_score
-	mov highScore, ebx
-	clear_score:
-	mov score, 0						;; score back to 0
+    dec isOver	;; set isOver back to 0
+    mov ebx, score
+    cmp highScore, ebx					;; new high score???
+    jge clear_score
+    mov highScore, ebx
+    clear_score:
+    mov score, 0						;; score back to 0
 
-	ret         ;; Do not delete this line!!!
+    ret
 GameRestart ENDP
 
-GamePlay PROC 
-	cmp isOver, 1			;; check if game is over
-	jne screen0             ;; if not over continue
-	cmp KeyPress, VK_SPACE	;; if the game is over check if we are restarting
+GamePlay PROC
+    cmp isOver, 1            ;; check if game is over
+    jne screen0              ;; if not over continue
 
-	jne screen2 			;; if we are not restarting
-	INVOKE GameRestart
+    ; Check if cooldown is active
+    cmp game_over_cooldown, 0
+    jg decrease_restart_cooldown
+
+    cmp KeyPress, VK_SPACE   ;; if the game is over check if we are restarting
+    jne screen2              ;; if we are not restarting
+    INVOKE GameRestart
+    jmp screen0
+
+decrease_restart_cooldown:
+    dec game_over_cooldown   ; Decrease cooldown counter
+    jmp screen2              ; Continue to game over screen
+
 screen0:
 	cmp screenNum, 0
 	jne screen1					;; if not screen 0, check if it's the next screen
@@ -1202,19 +1341,19 @@ screen2:
 	cmp isOver, 1   					;; END GAME
 	je screen3
 
-	cmp KeyPress, VK_RIGHT					;; checking DOWN ARROW for duck
+	cmp KeyPress, VK_RIGHT				;; checking DOWN ARROW for duck
 	je P_check							;; see if we need to toggle pause
 	cmp isPaused, 0						;; see if game is currently paused
 	jne the_end
 	jmp not_paused
 
 P_check:
-	cmp isPaused, 0						;; if not paused we want to pause
-	jne unpause							;; game is paused, we want to unpause
+    cmp isPaused, 0
+    jne unpause
+    inc isPaused
 
-	inc isPaused
-	INVOKE DrawStr, OFFSET pausedStr, 235, 215, 0
-	jmp the_end
+    INVOKE DrawStr, OFFSET pausedStr, 235, 215, text_color  ; Use dynamic color
+    jmp the_end
 
 unpause:
 	dec isPaused
@@ -1228,27 +1367,24 @@ not_paused:
     jne continue_screen_2
 
     ; Set cooldown for pterodactyl toggle
-    mov pterodactyl_cooldown, 10  ; Set cooldown to 10 frames
+    mov pterodactyl_cooldown, 15  ; Increased cooldown to 15 frames
 
     ; Toggle pterodactyl state
     cmp obj2_disabled, 1
     jne disable_pterodactyls    ; If not disabled, disable them
 
-    ; Enable pterodactyls - reset all lane birds
+    ; Enable pterodactyls - use fixed offsets instead of random generation
     mov obj2_disabled, 0
-    INVOKE generateBirdStartPos  ; Generate new starting position for middle lane
-    mov obj2x, eax
-    INVOKE generateBirdStartPos  ; Generate new starting position for top lane
-    mov top_bird_x, eax
-    INVOKE generateBirdStartPos  ; Generate new starting position for bottom lane
-    mov bottom_bird_x, eax
+    mov obj2x, 2000            ; Fixed position for middle lane
+    mov top_bird_x, 2200       ; Fixed position for top lane
+    mov bottom_bird_x, 2400    ; Fixed position for bottom lane
     jmp continue_screen_2
 
 disable_pterodactyls:
     mov obj2_disabled, 1       ; Disable pterodactyls
-    mov obj2x, 1870            ; Reset middle lane bird position off-screen
-    mov top_bird_x, 1870       ; Reset top lane bird position off-screen
-    mov bottom_bird_x, 2100    ; Reset bottom lane bird position off-screen
+    mov obj2x, 2500            ; Move far off-screen
+    mov top_bird_x, 2500       ; Move far off-screen
+    mov bottom_bird_x, 2500    ; Move far off-screen
     jmp continue_screen_2
 
 do_pterodactyl_cooldown:
@@ -1264,13 +1400,13 @@ continue_screen_2:
 	cmp screenNum, 2
 	jne screen3			;; if not screen 1, check if it's the next screen
 
-	INVOKE makeScreen2			;; draw game screen 
+	INVOKE makeScreen2			;; draw game screen
 	INVOKE drawMovingGround
 	jmp the_end
 
 screen3:		;; end game string
-	INVOKE DrawStr, OFFSET endStr, 245, 165, 0	;;end game
-	INVOKE DrawStr, OFFSET restartStr, 190, 185, 0		;; restart string
+    INVOKE DrawStr, OFFSET endStr, 245, 165, text_color     ; Use dynamic color
+    INVOKE DrawStr, OFFSET restartStr, 190, 185, text_color ; Use dynamic color
 
 the_end:
 

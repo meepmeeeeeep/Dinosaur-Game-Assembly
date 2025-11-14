@@ -14,44 +14,55 @@ include lines.inc
 include trig.inc
 include blit.inc
 
+EXTERN is_night_mode:DWORD    ; Declare external variable
 
 .DATA
 
 	;; If you need to, you can place global variables here
 
 .CODE
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DrawDinoPixel PROC USES ebx ecx x:DWORD, y:DWORD, color:DWORD
-;; screen is 640 (x) by 480 (y)
-	cmp x, 0 	; 0<= x<=639
-	jl the_end
-	cmp x, 639
-	jg the_end
+	;; screen is 640 (x) by 480 (y)
+    cmp x, 0 	; 0<= x<=639
+    jl the_end
+    cmp x, 639
+    jg the_end
 
-	cmp y, 0 	; 0<=y<=479
-	jl the_end
-	cmp y, 479
-	jg the_end
-;; pixel at  ((y * dwWidth) + x)
-	mov eax, 640	; eax = dwWidth
-	imul eax, y 	; eax = eax*y
-	add eax, x 	; eax = y*dwWidth + x 
-;; the first pixel of the first row is at (0,0) at the address held in ScreenBitsPtr, 
-;; the next pixel of the first row (1,0) is at the next byte address and subsequent pixels in that row are at increasing addresses.
-;; after (639, 0) the next byte contains the pixel color for (0,1)
-	add eax, ScreenBitsPtr		;; eax = ScreenBitsPtr + eax
-	mov ebx, color 				;; ebx = color
-	;;;checking
-	mov ecx, 0 
-	mov cl, BYTE PTR[eax]		;; ecx now has the old color
+    cmp y, 0 	; 0<=y<=479
+    jl the_end
+    cmp y, 479
+    jg the_end
+	;; pixel at  ((y * dwWidth) + x)
+    mov eax, 640	; eax = dwWidth
+    imul eax, y 	; eax = eax*y
+    add eax, x 	; eax = y*dwWidth + x 
+    add eax, ScreenBitsPtr		;; eax = ScreenBitsPtr + eax
 
-	;;checking ;;;
-	mov BYTE PTR[eax], bl 		;; color the byte
+    mov ecx, 0 
+    mov cl, BYTE PTR[eax]		;; ecx now has the old color
+
+    ; Check if night mode is active
+    mov ebx, color
+    cmp is_night_mode, 1
+    jne skip_invert
+
+    ; Invert color for night mode (255 - color)
+    push ecx                    ; Save old color
+    mov edx, 255
+    sub edx, ebx
+    mov ebx, edx
+    pop ecx                     ; Restore old color
+
+skip_invert:
+    mov BYTE PTR[eax], bl 		;; color the byte
 the_end:
-	;; return the old color of the pixel 
-	mov eax, ecx 
-	ret 			; Don't delete this line!!!
+    ;; return the old color of the pixel 
+    mov eax, ecx 
+    ret
 DrawDinoPixel ENDP
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;; a more advanced collison detector;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; returns if game is over
@@ -133,31 +144,41 @@ outer_eval:
 	mov eax, isOver 	;; return eax
 	ret 			; Don't delete this line!!!	
 BasicBlitDino ENDP
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 DrawPixel PROC USES eax ebx x:DWORD, y:DWORD, color:DWORD
-;; screen is 640 (x) by 480 (y)
-	cmp x, 0 	; 0<= x<=639
-	jl the_end
-	cmp x, 639
-	jg the_end
+	;; screen is 640 (x) by 480 (y)
+    cmp x, 0 	; 0<= x<=639
+    jl the_end
+    cmp x, 639
+    jg the_end
 
-	cmp y, 0 	; 0<=y<=479
-	jl the_end
-	cmp y, 479
-	jg the_end
-;; pixel at  ((y * dwWidth) + x)
-	mov eax, 640	; eax = dwWidth
-	imul eax, y 	; eax = eax*y
-	add eax, x 	; eax = y*dwWidth + x 
-;; the first pixel of the first row is at (0,0) at the address held in ScreenBitsPtr, 
-;; the next pixel of the first row (1,0) is at the next byte address and subsequent pixels in that row are at increasing addresses.
-;; after (639, 0) the next byte contains the pixel color for (0,1)
-	add eax, ScreenBitsPtr
-	mov ebx, color
-	mov BYTE PTR[eax], bl ;; color the byte
+    cmp y, 0 	; 0<=y<=479
+    jl the_end
+    cmp y, 479
+    jg the_end
+	;; pixel at  ((y * dwWidth) + x)
+    mov eax, 640	; eax = dwWidth
+    imul eax, y 	; eax = eax*y
+    add eax, x 	; eax = y*dwWidth + x
+    add eax, ScreenBitsPtr
+
+    ; Check if night mode is active
+    mov ebx, color
+    cmp is_night_mode, 1
+    jne skip_invert
+
+    ; Invert color for night mode (255 - color)
+    mov ecx, 255
+    sub ecx, ebx
+    mov ebx, ecx
+
+skip_invert:
+    mov BYTE PTR[eax], bl ;; color the byte
 the_end:
-	ret 			; Don't delete this line!!!
+    ret
 DrawPixel ENDP
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 BasicBlit PROC USES eax ebx ecx edx edi ptrBitmap:PTR DINOGAMEBITMAP , xcenter:DWORD, ycenter:DWORD
 ; ptrBitmap holds the address of a DINOGAMEBITMAP
