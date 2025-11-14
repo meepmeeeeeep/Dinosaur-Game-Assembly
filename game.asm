@@ -148,6 +148,9 @@ jumps_remaining DWORD 2    ; Track available jumps (2 for double jump)
 double_jump_cooldown DWORD 0    ; Counter for double jump cooldown
 double_jump_input_cooldown DWORD 0    ; Cooldown for double jump input detection
 
+pterodactyl_cooldown DWORD 0    ; Counter for pterodactyl cooldown
+pterodactyl_input_cooldown DWORD 0    ; Cooldown for pterodactyl input detection
+
 
 .CODE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1217,22 +1220,39 @@ unpause:
 	dec isPaused
 
 not_paused:
+    ; Check if pterodactyl toggle cooldown is active
+    cmp pterodactyl_cooldown, 0
+    jg do_pterodactyl_cooldown
+
     cmp KeyPress, VK_LEFT
     jne continue_screen_2
+
+    ; Set cooldown for pterodactyl toggle
+    mov pterodactyl_cooldown, 10  ; Set cooldown to 10 frames
 
     ; Toggle pterodactyl state
     cmp obj2_disabled, 1
     jne disable_pterodactyls    ; If not disabled, disable them
 
-    ; Enable pterodactyls
+    ; Enable pterodactyls - reset all lane birds
     mov obj2_disabled, 0
-    INVOKE generateBirdStartPos  ; Generate new starting position
-    mov obj2x, eax              ; Set new position
+    INVOKE generateBirdStartPos  ; Generate new starting position for middle lane
+    mov obj2x, eax
+    INVOKE generateBirdStartPos  ; Generate new starting position for top lane
+    mov top_bird_x, eax
+    INVOKE generateBirdStartPos  ; Generate new starting position for bottom lane
+    mov bottom_bird_x, eax
     jmp continue_screen_2
 
 disable_pterodactyls:
-    mov obj2_disabled, 1        ; Disable pterodactyls
-    mov obj2x, 1870            ; Reset position off-screen
+    mov obj2_disabled, 1       ; Disable pterodactyls
+    mov obj2x, 1870            ; Reset middle lane bird position off-screen
+    mov top_bird_x, 1870       ; Reset top lane bird position off-screen
+    mov bottom_bird_x, 2100    ; Reset bottom lane bird position off-screen
+    jmp continue_screen_2
+
+do_pterodactyl_cooldown:
+    dec pterodactyl_cooldown    ; Decrease cooldown counter
     jmp continue_screen_2
 
 obj2_was_enabled:
