@@ -441,27 +441,27 @@ Source Code (.asm) → Assembler → Object Files (.obj) → Linker → Executab
 ```
 make.bat (Build Script)
     ↓
-┌─────────────────────────────────┐
-│ COMPILATION PHASE               │
-│ (Assembler: ml.exe)             │
-├─────────────────────────────────┤
-│ stars.asm    → stars.obj        │
-│ lines.asm    → lines.obj        │
-│ trig.asm     → trig.obj         │
-│ blit.asm     → blit.obj         │
-│ game.asm     → game.obj         │
-│ bitmaps.asm  → bitmaps.obj      │
-└─────────────────────────────────┘
+|---------------------------------|
+| COMPILATION PHASE               |
+| (Assembler: ml.exe)             |
+|---------------------------------|
+| stars.asm    → stars.obj        |
+| lines.asm    → lines.obj        |
+| trig.asm     → trig.obj         |
+| blit.asm     → blit.obj         |
+| game.asm     → game.obj         |
+| bitmaps.asm  → bitmaps.obj      |
+|---------------------------------|
     ↓
-┌─────────────────────────────────┐
-│ LINKING PHASE                   │
-│ (Linker: link.exe)              │
-├─────────────────────────────────┤
-│ Combine all .obj files          │
-│ Add Windows libraries           │
-│ Resolve external references     │
-│ Generate executable             │
-└─────────────────────────────────┘
+|---------------------------------|
+| LINKING PHASE                   |
+| (Linker: link.exe)              |
+|---------------------------------|
+| Combine all .obj files          |
+| Add Windows libraries           |
+| Resolve external references     |
+| Generate executable             |
+|---------------------------------|
     ↓
 game.exe (Final Executable)
 ```
